@@ -11,6 +11,7 @@ import mcubes
 import trimesh
 import dataio
 import math
+import time
 
 
 def export_model(ckpt_path, model_name, N=512, model_type='bacon', hidden_layers=8,
@@ -58,6 +59,7 @@ def generate_mesh(model, N, return_sdf=False, num_outputs=4, model_name='model')
 
     # render in a batched fashion to save memory
     bsize = int(128**2)
+    start_time = time.perf_counter()
     for i in tqdm(range(int(N**3 / bsize))):
         coords = render_coords[i*bsize:(i+1)*bsize, :]
         out = model({'coords': coords})['model_out']
@@ -67,6 +69,7 @@ def generate_mesh(model, N, return_sdf=False, num_outputs=4, model_name='model')
 
         for idx, sdf in enumerate(out):
             sdf_values[idx][i*bsize:(i+1)*bsize] = sdf.detach().cpu().numpy()
+    print('Time taken for SDF evaluation:', time.perf_counter() - start_time)
 
     if return_sdf:
         return [sdf.reshape(N, N, N) for sdf in sdf_values]
@@ -138,6 +141,8 @@ def compute_one_scale_adaptive(model, layer_ind, render_coords, sdf_values, hash
 
 def generate_mesh_adaptive(model, model_name):
     with torch.no_grad():
+        start_time = time.perf_counter()
+
         lowest_res = N / 2 ** (len(output_layers) - 1)
         compute_one_scale(model, 0, coords_list[0], sdf_out_list[0], subdiv_hashes[0])
 
@@ -163,6 +168,8 @@ def generate_mesh_adaptive(model, model_name):
             else:
                 compute_one_scale(model, i, coords_curr[non_empty_ind], sdf_curr, non_empty_ind)
 
+        print('Time taken for SDF evaluation:', time.perf_counter() - start_time)
+
         # run marching cubes
         sdf = sdf_curr.reshape(N, N, N).detach().cpu().numpy()
         vertices, triangles = mcubes.marching_cubes(-sdf, 0)
@@ -177,7 +184,7 @@ def export_meshes(adaptive=True):
     bacon_ckpts = ['../trained_models/dragon.pth',
                    '../trained_models/armadillo.pth',
                    '../trained_models/lucy.pth',
-                   '../trained_models/thai.pth']
+                   '../logs/bacon_thai/checkpoints/model_final.pth']
 
     bacon_names = ['bacon_dragon',
                    'bacon_armadillo',
@@ -186,7 +193,9 @@ def export_meshes(adaptive=True):
 
     print('Exporting BACON')
     for ckpt, name in tqdm(zip(bacon_ckpts, bacon_names), total=len(bacon_ckpts)):
+        start_time = time.perf_counter()
         export_model(ckpt, name, model_type='bacon', output_layers=output_layers, adaptive=adaptive)
+        print('Time taken for BACON:', time.perf_counter() - start_time)
 
 
 def init_multiscale_mc():
@@ -202,6 +211,7 @@ def init_multiscale_mc():
 if __name__ == '__main__':
     global N, output_layers, subdiv_hashes, lowest_res, coords_list, sdf_out_list, num_outputs
     N = 512
+    #output_layers = [8]
     output_layers = [2, 4, 6, 8]
     num_outputs = len(output_layers)
 
@@ -211,3 +221,4 @@ if __name__ == '__main__':
     # setting adaptive=False will output meshes at all resolutions
     # while adaptive=True while extract only a high-resolution mesh
     export_meshes(adaptive=True)
+    #export_meshes(adaptive=False)

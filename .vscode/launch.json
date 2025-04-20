@@ -1,0 +1,29 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Train Thai Statue",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/experiments/train_sdf.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/experiments",
+            "args": [
+                "-c", "config/sdf/bacon_thai.ini"
+            ]
+        },
+        {
+            "name": "Reconstruct Thai Statue",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/experiments/render_sdf.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/experiments",
+            "args": [
+            ]
+        }
+    ]
+}
